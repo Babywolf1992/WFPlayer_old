@@ -17,83 +17,78 @@
     if (self = [super initWithFrame:frame]) {
         NSURL *url = [NSURL fileURLWithPath:URL];
         _moviePlayer = [[MPMoviePlayerController alloc] initWithContentURL:url];
+        
         _moviePlayer.view.frame = self.bounds;
         [_moviePlayer play];
         _moviePlayer.controlStyle = MPMovieControlStyleNone;
         // 必须关闭播放器view视图响应，否则导致tap手势不触发
         _moviePlayer.view.userInteractionEnabled = NO;
-        [self addSubview:self.moviePlayer.view];
+        [self addSubview:_moviePlayer.view];
         [self addNotification];
     }
-    [self createUI];
-    
-    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapAction)];
-    [self addGestureRecognizer:tap];
-    
     return self;
 }
 
 -(void)tapAction {
-    self.backView.hidden = !self.backView.hidden;
+    _backView.hidden = !_backView.hidden;
 }
 
 - (void)createUI {
     //  backView
-    self.backView = [[UIView alloc]initWithFrame:[[UIScreen mainScreen]bounds]];
-    self.backView.backgroundColor = [UIColor clearColor];
-    self.userInteractionEnabled = YES;
-    self.backView.userInteractionEnabled = YES;
-    [self addSubview:self.backView];
+    _backView = [[UIView alloc]initWithFrame:[[UIScreen mainScreen]bounds]];
+    _backView.backgroundColor = [UIColor clearColor];
+    _backView.userInteractionEnabled = YES;
+    [self addSubview:_backView];
     
     //  PlayButton
-    self.playButton = [UIButton buttonWithType:UIButtonTypeCustom];
-    [self.playButton addTarget:self action:@selector(playAction:) forControlEvents:UIControlEventTouchUpInside];
-    [self.playButton setImage:[UIImage imageNamed:@"Pause"] forState:UIControlStateNormal];
-    [self.playButton setImage:[UIImage imageNamed:@"Play"] forState:UIControlStateSelected];
-    self.playButton.frame = CGRectMake(15, KScreenHeight-46-20, 46, 46);
-    [self.backView addSubview:self.playButton];
+    _playButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    [_playButton addTarget:self action:@selector(playAction:) forControlEvents:UIControlEventTouchUpInside];
+    [_playButton setImage:[UIImage imageNamed:@"Pause"] forState:UIControlStateNormal];
+    [_playButton setImage:[UIImage imageNamed:@"Play"] forState:UIControlStateSelected];
+    _playButton.frame = CGRectMake(15, KScreenHeight-46-20, 46, 46);
+    [_backView addSubview:_playButton];
     
     //  startTime
-    self.startTime = [[UILabel alloc]initWithFrame:CGRectMake(CGRectGetMaxX(_playButton.frame)+10, CGRectGetMidY(self.playButton.frame)-15/2.0, 35, 15)];
-    self.startTime.text = @"00:00";
-    self.startTime.font = [UIFont systemFontOfSize:12];
+    _startTime = [[UILabel alloc]initWithFrame:CGRectMake(CGRectGetMaxX(_playButton.frame)+10, CGRectGetMidY(self.playButton.frame)-15/2.0, 35, 15)];
+    _startTime.text = @"00:00";
+    _startTime.font = [UIFont systemFontOfSize:12];
     //    self.startTime.backgroundColor = [UIColor redColor];
-    self.startTime.textColor = [UIColor whiteColor];
-    [self.backView addSubview:self.startTime];
+    _startTime.textColor = [UIColor whiteColor];
+    [_backView addSubview:_startTime];
     
     //slider
-    self.progress =[[UISlider alloc]initWithFrame:CGRectMake(CGRectGetMaxX(_startTime.frame)+5, CGRectGetMinY(_startTime.frame), KScreenWidth-CGRectGetMaxX(_startTime.frame)-35-20, 15)];
+    _progress =[[UISlider alloc]initWithFrame:CGRectMake(CGRectGetMaxX(_startTime.frame)+5, CGRectGetMinY(_startTime.frame), KScreenWidth-CGRectGetMaxX(_startTime.frame)-35-20, 15)];
     //  滑块左侧颜色
-    self.progress.minimumTrackTintColor = [UIColor whiteColor];
+    _progress.minimumTrackTintColor = [UIColor whiteColor];
     //  滑块右侧颜色
-    self.progress.maximumTrackTintColor = [UIColor whiteColor];
+    _progress.maximumTrackTintColor = [UIColor whiteColor];
     UIImage *thumbImage0 = [UIImage imageNamed:@"Oval 1"];
-    [self.progress setThumbImage:thumbImage0 forState:UIControlStateNormal];
-    [self.progress setThumbImage:thumbImage0 forState:UIControlStateSelected];
-    [self.progress addTarget:self action:@selector(valueChange:other:) forControlEvents:UIControlEventValueChanged];
-    self.progress.userInteractionEnabled = NO;
-    [self.backView addSubview:self.progress];
+    [_progress setThumbImage:thumbImage0 forState:UIControlStateNormal];
+    [_progress setThumbImage:thumbImage0 forState:UIControlStateSelected];
+    [_progress addTarget:self action:@selector(valueChange:other:) forControlEvents:UIControlEventValueChanged];
+    _progress.userInteractionEnabled = NO;
+    [_backView addSubview:_progress];
     
     //  endTime
-    self.endTime = [[UILabel alloc]initWithFrame:CGRectMake(CGRectGetMaxX(_progress.frame)+5, CGRectGetMinY(_progress.frame), 35, 15)];
+    _endTime = [[UILabel alloc]initWithFrame:CGRectMake(CGRectGetMaxX(_progress.frame)+5, CGRectGetMinY(_progress.frame), 35, 15)];
     self.endTime.text = @"00:00";
     self.endTime.font = [UIFont systemFontOfSize:12];
     self.endTime.textColor = [UIColor whiteColor];
-    [self.backView addSubview:self.endTime];
+    [_backView addSubview:self.endTime];
     
     //  backButton
-    self.backButton = [UIButton buttonWithType:UIButtonTypeCustom];
-    [self.backButton setImage:[UIImage imageNamed:@"Safari Back"] forState:UIControlStateNormal];
-    [self.backButton addTarget:self action:@selector(backAction) forControlEvents:UIControlEventTouchUpInside];
-    self.backButton.frame = CGRectMake(15, 15, 34, 34);
-    [self.backView addSubview:self.backButton];
+    _backButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    [_backButton setImage:[UIImage imageNamed:@"Safari Back"] forState:UIControlStateNormal];
+    [_backButton addTarget:self action:@selector(backAction) forControlEvents:UIControlEventTouchUpInside];
+    _backButton.frame = CGRectMake(15, 15, 34, 34);
+    [_backView addSubview:_backButton];
 }
 
 - (void)playAction:(UIButton *)sender {
     if (self.playButton.selected) {
-        [self.moviePlayer play];
+        [_moviePlayer play];
     }else {
-        [self.moviePlayer pause];
+        [_moviePlayer pause];
     }
     self.playButton.selected = !self.playButton.selected;
 }
@@ -103,19 +98,19 @@
 }
 
 - (void)backAction {
-    [self.moviePlayer pause];
+    [_moviePlayer pause];
     [self removeFromSuperview];
 }
 
 - (void)addNotification {
     NSNotificationCenter *notificationCenter=[NSNotificationCenter defaultCenter];
-    [notificationCenter addObserver:self selector:@selector(DurationAvailable) name:MPMovieDurationAvailableNotification object:self.moviePlayer];
-    [notificationCenter addObserver:self selector:@selector(mediaPlayerPlaybackFinished) name:MPMoviePlayerPlaybackDidFinishNotification object:self.moviePlayer];
+    [notificationCenter addObserver:self selector:@selector(DurationAvailable) name:MPMovieDurationAvailableNotification object:_moviePlayer];
+    [notificationCenter addObserver:self selector:@selector(mediaPlayerPlaybackFinished) name:MPMoviePlayerPlaybackDidFinishNotification object:_moviePlayer];
 }
 
 - (void)DurationAvailable {
-    NSInteger minit = self.moviePlayer.duration / 60;
-    NSInteger second = self.moviePlayer.duration - 60 * minit;
+    NSInteger minit = _moviePlayer.duration / 60;
+    NSInteger second = _moviePlayer.duration - 60 * minit;
     self.endTime.text = [NSString stringWithFormat:@"%02ld:%02ld", (long)minit, (long)second];
     
     self.timer = [NSTimer scheduledTimerWithTimeInterval:0.5 target:self selector:@selector(refreshCurrentTime) userInfo:nil repeats:YES];
@@ -128,14 +123,24 @@
 }
 
 - (void)refreshCurrentTime {
-    NSInteger minit = self.moviePlayer.currentPlaybackTime / 60;
-    NSInteger second = self.moviePlayer.currentPlaybackTime - 60 * minit;
-    NSInteger endMinit = (self.moviePlayer.duration - self.moviePlayer.currentPlaybackTime) / 60;
-    NSInteger endSecond = (self.moviePlayer.duration - self.moviePlayer.currentPlaybackTime) - 60 * endMinit;
+    NSInteger minit = _moviePlayer.currentPlaybackTime / 60;
+    NSInteger second = _moviePlayer.currentPlaybackTime - 60 * minit;
+    NSInteger endMinit = (_moviePlayer.duration - _moviePlayer.currentPlaybackTime) / 60;
+    NSInteger endSecond = (_moviePlayer.duration - _moviePlayer.currentPlaybackTime) - 60 * endMinit;
     self.startTime.text = [NSString stringWithFormat:@"%02ld:%02ld", (long)minit, (long)second];
     self.endTime.text = [NSString stringWithFormat:@"%02ld:%02ld", (long)endMinit, (long)endSecond];
     
-    self.progress.value = self.moviePlayer.currentPlaybackTime / self.moviePlayer.duration;
+    _progress.value = _moviePlayer.currentPlaybackTime / _moviePlayer.duration;
+}
+
+- (void)drawRect:(CGRect)rect {
+    [super drawRect:rect];
+    self.userInteractionEnabled = YES;
+    
+    [self createUI];
+    
+    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapAction)];
+    [self addGestureRecognizer:tap];
 }
 
 @end
