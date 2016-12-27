@@ -1,0 +1,2 @@
+# WFPlayer
+基于MPMoviePlayerController的一个视频播放器，类似微信的那种播放小视频浏览器，不适于播放电影等大型流媒体
