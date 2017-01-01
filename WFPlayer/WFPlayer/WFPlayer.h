@@ -8,6 +8,8 @@
 
 #import <UIKit/UIKit.h>
 #import <MediaPlayer/MediaPlayer.h>
+#import "ASIHTTPRequest.h"
+#import "MBProgressHUD.h"
 
 @interface WFPlayer : UIView
 
@@ -22,6 +24,10 @@
 @property (nonatomic, strong) NSTimer *timer;
 @property (nonatomic, strong) UIImageView *timaImage;
 @property (nonatomic, strong) UILabel *timeLabel;
+
+@property (nonatomic, strong) ASIHTTPRequest *request;
+@property (nonatomic, strong) MBProgressHUD *progresshud;
+@property (nonatomic, strong) NSTimer *downloadProcessTimer;
 
 - (instancetype)initWithFrame:(CGRect)frame URL:(NSString *)URL;
 @end

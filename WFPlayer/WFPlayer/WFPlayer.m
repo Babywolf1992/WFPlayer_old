@@ -7,23 +7,27 @@
 //
 
 #import "WFPlayer.h"
+#import "SBJson.h"
 
 #define KScreenWidth [[UIScreen mainScreen]bounds].size.width
 #define KScreenHeight [[UIScreen mainScreen]bounds].size.height
 
 @implementation WFPlayer
 
-- (instancetype)initWithFrame:(CGRect)frame URL:(NSString *)URL {
+- (instancetype)initWithFrame:(CGRect)frame URL:(NSString *)urlString {
     if (self = [super initWithFrame:frame]) {
-        NSURL *url = [NSURL fileURLWithPath:URL];
-        _moviePlayer = [[MPMoviePlayerController alloc] initWithContentURL:url];
+        NSURL *url = [NSURL URLWithString:urlString];
+        _request = [[ASIHTTPRequest alloc] initWithURL:url];
+        [_request setDelegate:self];
+        [_request setDidFinishSelector:@selector(downloadFileDone:)];
+        [_request setDidFailSelector:@selector(downloadFileFail:)];
+        [_request startAsynchronous];
+        [_request setDefaultResponseEncoding:NSUTF8StringEncoding];
         
-        _moviePlayer.view.frame = self.bounds;
-        [_moviePlayer play];
-        _moviePlayer.controlStyle = MPMovieControlStyleNone;
-        // 必须关闭播放器view视图响应，否则导致tap手势不触发
-        _moviePlayer.view.userInteractionEnabled = NO;
-        [self addSubview:_moviePlayer.view];
+        NSMutableDictionary *dict = [[NSMutableDictionary alloc] init];
+        [dict setObject:_request forKey:@"request"];
+        
+        _downloadProcessTimer = [NSTimer scheduledTimerWithTimeInterval:0.1 target:self selector:@selector(downloadFileProgress:) userInfo:dict repeats:YES];
         [self addNotification];
     }
     return self;
@@ -34,6 +38,13 @@
 }
 
 - (void)createUI {
+    
+    _progresshud = [[MBProgressHUD alloc] initWithView:self];
+    _progresshud.mode = MBProgressHUDModeDeterminate;
+    _progresshud.progress = 0.0f;
+    _progresshud.hidden = YES;
+    [self addSubview:_progresshud];
+    
     //  backView
     _backView = [[UIView alloc]initWithFrame:[[UIScreen mainScreen]bounds]];
     _backView.backgroundColor = [UIColor clearColor];
@@ -82,6 +93,8 @@
     [_backButton addTarget:self action:@selector(backAction) forControlEvents:UIControlEventTouchUpInside];
     _backButton.frame = CGRectMake(15, 15, 34, 34);
     [_backView addSubview:_backButton];
+    
+    _playButton.selected = YES;
 }
 
 - (void)playAction:(UIButton *)sender {
@@ -91,6 +104,20 @@
         [_moviePlayer pause];
     }
     self.playButton.selected = !self.playButton.selected;
+}
+
+- (void)showPlayer:(NSURL *)url {
+    _moviePlayer = [[MPMoviePlayerController alloc] initWithContentURL:url];
+    
+    _moviePlayer.view.frame = self.bounds;
+    [_moviePlayer play];
+    _moviePlayer.controlStyle = MPMovieControlStyleNone;
+    // 必须关闭播放器view视图响应，否则导致tap手势不触发
+    _moviePlayer.view.userInteractionEnabled = NO;
+    //    [self addSubview:_moviePlayer.view];
+    [self insertSubview:_moviePlayer.view atIndex:1];
+    [_moviePlayer play];
+    _playButton.selected = NO;
 }
 
 - (void)valueChange:(UISlider *)progress other:(UIEvent *)event {
@@ -141,6 +168,118 @@
     
     UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapAction)];
     [self addGestureRecognizer:tap];
+}
+
+- (void)downloadFileDone:(ASIHTTPRequest *)requestFile {
+    if (_downloadProcessTimer!=nil)
+    {
+        [_downloadProcessTimer invalidate];
+    }
+    _progresshud.hidden = YES;
+    
+    NSDictionary* dict = requestFile.responseString.JSONValue;
+    if (dict && [[NSString stringWithFormat:@"%@",dict[@"status"]] isEqualToString:@"-2"]) {
+        UIAlertView *msgalert = [[UIAlertView alloc] initWithTitle:NSLocalizedString(@"Read error", nil)
+                                                           message:dict[@"msg"]
+                                                          delegate:nil
+                                                 cancelButtonTitle:NSLocalizedString(@"Dismiss", nil)
+                                                 otherButtonTitles:nil];
+        [msgalert show];
+        return;
+    }
+    
+    NSData* data = [requestFile responseData];
+    //下载文件数据不存在
+    if (!data)
+    {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            UIAlertView *msgalert = [[UIAlertView alloc] initWithTitle:NSLocalizedString(@"Read error", nil)
+                                                               message:NSLocalizedString(@"CheckConnectSet", nil)
+                                                              delegate:nil
+                                                     cancelButtonTitle:NSLocalizedString(@"Dismiss", nil)
+                                                     otherButtonTitles:nil];
+            [msgalert show];
+        });
+        return;//////////////////////////
+    }
+    
+    
+    
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    
+    
+    //获取文件路径，并写入到文件中
+    NSString *urlstring = [requestFile.url absoluteString];
+    NSArray* paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+    NSString* docsDirectory = [paths objectAtIndex:0];
+    NSString* filePath = [docsDirectory stringByAppendingPathComponent:@"test.mp4"];
+    
+    
+    /**
+     *  先移除 有时候有重名的情况
+     */
+    NSError*error;
+    if ([fileManager fileExistsAtPath:filePath])
+    {
+        [fileManager removeItemAtPath:filePath error:&error];
+        
+    }
+    if (error)
+    {
+        NSLog(@"error=%@",error.description);
+    }
+    
+    [data writeToFile:filePath atomically:YES];
+    NSLog(@"downloadFileDone+filePath:%@",filePath);
+    
+    //判断文件写入是否成功
+    if([fileManager fileExistsAtPath:filePath])
+    {
+        //        bool result = [self isFirstResponder];
+        //        if (!result) {
+        //            return;
+        //        }
+        [self showPlayer:[NSURL fileURLWithPath:filePath]];
+    }
+}
+
+- (void)downloadFileFail:(ASIHTTPRequest *)requestFile {
+    if (_downloadProcessTimer!=nil)
+    {
+        [_downloadProcessTimer invalidate];
+    }
+    _progresshud.hidden = YES;
+    
+    NSError *error = [requestFile error];
+    NSLog(@"downloadFileFailed:%@",error.description);
+    
+    if ([error code] != NSURLErrorCancelled)
+    {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            UIAlertView *msgalert = [[UIAlertView alloc] initWithTitle:NSLocalizedString(@"Load error", nil)
+                                                               message:NSLocalizedString(@"CheckConnectSet", nil)
+                                                              delegate:nil
+                                                     cancelButtonTitle:NSLocalizedString(@"Dismiss", nil)
+                                                     otherButtonTitles:nil];
+            [msgalert show];
+        });
+    }
+}
+
+//下载进度
+- (void)downloadFileProgress:(NSTimer *)timer
+{
+    NSDictionary *dict = [timer userInfo];
+    ASIHTTPRequest *requestFile = [dict objectForKey:@"request"];
+    float progress = (requestFile.totalBytesRead*1.0)/(requestFile.contentLength*1.0);
+    if (progress <= 1.0)
+    {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            _progresshud.hidden = NO;
+            [_progresshud show:YES];
+            _progresshud.progress = progress;
+        });
+    }
 }
 
 @end
